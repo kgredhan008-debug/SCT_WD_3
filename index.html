@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevQuiz: C & C++ Mastery</title>
+    <!-- Tailwind CSS for robust, utility-first styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            background-color: #0B0F19; 
+            color: #f3f4f6; 
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; 
+        }
+        /* Utility to hide views */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="selection:bg-teal-500/30 selection:text-teal-200">
+    <!-- Main Navigation Bar -->
+    <nav class="border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-teal-500/20 p-2 rounded-lg text-teal-400 font-bold font-mono">&lt;/&gt;</div>
+                <span class="font-mono text-xl font-bold bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">DevQuiz</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- App Container -->
+    <main class="max-w-7xl mx-auto px-4 py-8" id="app">
+        
+        <!-- 1. Setup View Dashboard -->
+        <div id="view-setup" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+                    <h2 class="text-2xl font-bold text-white mb-2">Configure Quiz Session</h2>
+                    <p class="text-gray-400 mb-8">Select your parameters before starting the evaluation.</p>
+                    
+                    <div id="setup-error" class="hidden bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm mb-6"></div>
+
+                    <div class="space-y-4 mb-6">
+                        <label class="block text-sm font-medium text-gray-300">Candidate Name</label>
+                        <input type="text" id="input-name" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono" placeholder="e.g. Alice_Dev">
+                    </div>
+
+                    <div class="space-y-4 mb-6">
+                        <label class="block text-sm font-medium text-gray-300">Target Language</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button class="topic-btn p-4 rounded-xl border bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 transition-all font-semibold" data-topic="C">C Programming</button>
+                            <button class="topic-btn p-4 rounded-xl border bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 transition-all font-semibold" data-topic="C++">C++ Programming</button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 mb-8">
+                        <label class="block text-sm font-medium text-gray-300">Difficulty Level</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button class="diff-btn p-4 rounded-xl border bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 transition-all font-semibold" data-diff="Basic">Basic</button>
+                            <button class="diff-btn p-4 rounded-xl border bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 transition-all font-semibold" data-diff="Intermediate">Intermediate</button>
+                        </div>
+                    </div>
+
+                    <button id="btn-start" class="w-full bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-400 hover:to-blue-500 text-white rounded-xl py-4 font-bold shadow-lg shadow-teal-500/20 transition-all text-lg tracking-wide">
+                        Initialize Environment
+                    </button>
+                </div>
+            </div>
+            
+            <div class="lg:col-span-1">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl" id="leaderboard-container">
+                    <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                        <span class="text-2xl">🏆</span> Global High Scores
+                    </h3>
+                    <div id="leaderboard-list" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Interactive Quiz Engine View -->
+        <div id="view-quiz" class="hidden max-w-4xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex gap-2 text-gray-400 font-mono text-sm uppercase tracking-wider">
+                    <span>Question <span id="quiz-curr-idx" class="text-white font-bold">1</span></span>
+                    <span class="text-gray-600">/</span>
+                    <span id="quiz-total-idx">5</span>
+                </div>
+                <!-- Real-time Timer -->
+                <div class="flex items-center gap-2 text-teal-400 font-mono bg-teal-500/10 px-4 py-2 rounded-lg border border-teal-500/20 font-bold">
+                    ⏱️ <span id="quiz-timer">00:00</span>
+                </div>
+            </div>
+
+            <div class="relative h-2 bg-gray-800 rounded-full mb-12 overflow-hidden">
+                <div id="quiz-progress" class="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-500 to-blue-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+                <div class="mb-6 flex justify-between items-center">
+                    <span id="quiz-subtopic" class="bg-gray-800 text-gray-300 px-3 py-1 rounded-md text-xs font-semibold uppercase border border-gray-700"></span>
+                    <span id="quiz-type" class="text-gray-500 text-sm font-semibold tracking-wide border-b border-gray-700 pb-1"></span>
+                </div>
+                
+                <h3 id="quiz-text" class="text-xl text-white font-medium mb-6 leading-relaxed"></h3>
+                
+                <div id="quiz-code-container" class="hidden bg-gray-950 p-5 rounded-xl border border-gray-800 mb-8 overflow-x-auto shadow-inner">
+                    <pre><code id="quiz-code" class="text-sm font-mono text-teal-300"></code></pre>
+                </div>
+
+                <div id="quiz-options" class="space-y-4">
+                    <!-- Dynamic Options -->
+                </div>
+
+                <div class="mt-12 flex justify-end">
+                    <button id="btn-next" class="bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed px-8 py-3 flex items-center gap-2 rounded-xl font-bold transition-all" disabled>
+                        <span>Next Question</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Performance Analytics View -->
+        <div id="view-analytics" class="hidden max-w-5xl mx-auto space-y-8">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center justify-center p-4 bg-teal-500/10 rounded-full mb-4 ring-1 ring-teal-500/30">
+                    <span class="text-4xl">🚀</span>
+                </div>
+                <h2 class="text-4xl font-bold text-white mb-2">Evaluation Complete</h2>
+                <p class="text-gray-400 font-mono">Detailed performance heuristics generated.</p>
+            </div>
+
+            <!-- Core Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                    <div class="text-5xl font-mono font-bold text-white mb-1" id="stat-score">0%</div>
+                    <div class="text-gray-500 text-sm uppercase tracking-wider font-semibold">Overall Accuracy</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                    <div class="text-5xl font-mono font-bold text-white mb-1" id="stat-time">00:00</div>
+                    <div class="text-gray-500 text-sm uppercase tracking-wider font-semibold">Total Evaluation Time</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                    <div class="text-5xl font-mono font-bold text-white mb-1" id="stat-correct">0</div>
+                    <div class="text-gray-500 text-sm uppercase tracking-wider font-semibold">Correct Submissions</div>
+                </div>
+            </div>
+
+            <!-- Data Visualizations -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+                    <h3 class="text-lg font-bold text-white mb-6">Topic Accuracy Footprint</h3>
+                    <div class="flex-grow flex items-center justify-center">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+                    <h3 class="text-lg font-bold text-white mb-6">Time Expenditure Breakdown</h3>
+                    <div class="flex-grow flex items-center justify-center">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center pt-8 pb-12">
+                <button id="btn-restart" class="bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 border border-gray-700 transition-colors shadow-lg">
+                    Return to Mission Control
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript Data and Application Logic -->
+    <script>
+        /** 
+         * Question Data Modeling
+         * Schema supports multiple formats and dynamic randomization 
+         */
+        const QuestionBank = [
+            // ================= C BASIC =================
+            { id: 'c-b-1', topic: 'C', difficulty: 'Basic', subTopic: 'Syntax', type: 'single', text: 'What will be the output of the following C code?', codeSnippet: '#include <stdio.h>\nint main() {\n  int x = 5;\n  printf("%d", x++);\n  return 0;\n}', options: [{id: 'o1', text: '5'}, {id: 'o2', text: '6'}, {id: 'o3', text: 'Compile Error'}, {id: 'o4', text: 'Garbage Value'}], correctAnswers: ['o1'] },
+            { id: 'c-b-2', topic: 'C', difficulty: 'Basic', subTopic: 'Loops', type: 'multi', text: 'Which of the following are valid loop constructs in C?', options: [{id: 'o1', text: 'for'}, {id: 'o2', text: 'foreach'}, {id: 'o3', text: 'while'}, {id: 'o4', text: 'do-while'}], correctAnswers: ['o1', 'o3', 'o4'] },
+            { id: 'c-b-3', topic: 'C', difficulty: 'Basic', subTopic: 'Data Types', type: 'fill', text: 'What is the exact keyword used to define a custom data type in C?', correctAnswers: ['typedef'] },
+            { id: 'c-b-4', topic: 'C', difficulty: 'Basic', subTopic: 'Memory Basics', type: 'single', text: 'What operator is used to get the memory address of a variable in C?', options: [{id: 'o1', text: '*'}, {id: 'o2', text: '&'}, {id: 'o3', text: '->'}, {id: 'o4', text: 'address()'}], correctAnswers: ['o2'] },
+            { id: 'c-b-5', topic: 'C', difficulty: 'Basic', subTopic: 'Functions', type: 'fill', text: 'What is the standard return type of the main() function in a C program?', correctAnswers: ['int'] },
+            
+            // ================= C INTERMEDIATE =================
+            { id: 'c-i-1', topic: 'C', difficulty: 'Intermediate', subTopic: 'Pointers', type: 'single', text: 'If `int *ptr = &arr[0];`, what does `ptr + 1` mathematically translate to in terms of memory address?', options: [{id: 'o1', text: 'Address of ptr + 1 byte'}, {id: 'o2', text: 'Address of ptr + sizeof(int)'}, {id: 'o3', text: 'Address of ptr + sizeof(ptr)'}], correctAnswers: ['o2'] },
+            { id: 'c-i-2', topic: 'C', difficulty: 'Intermediate', subTopic: 'Memory Mgmt', type: 'multi', text: 'Which function(s) automatically initialize allocated memory to zero?', options: [{id: 'o1', text: 'malloc'}, {id: 'o2', text: 'calloc'}, {id: 'o3', text: 'realloc'}], correctAnswers: ['o2'] },
+            { id: 'c-i-3', topic: 'C', difficulty: 'Intermediate', subTopic: 'Structs', type: 'single', text: 'What is "structure padding" in C?', options: [{id: 'o1', text: 'Adding empty chars to strings inside structs'}, {id: 'o2', text: 'Compiler adding empty bytes to align data in memory'}, {id: 'o3', text: 'A security mechanism to prevent buffer overflows'}], correctAnswers: ['o2'] },
+            
+            // ================= C++ BASIC =================
+            { id: 'cpp-b-1', topic: 'C++', difficulty: 'Basic', subTopic: 'Classes & Objects', type: 'single', text: 'What is the default access specifier for members of a class in C++?', options: [{id: 'o1', text: 'public'}, {id: 'o2', text: 'private'}, {id: 'o3', text: 'protected'}, {id: 'o4', text: 'internal'}], correctAnswers: ['o2'] },
+            { id: 'cpp-b-2', topic: 'C++', difficulty: 'Basic', subTopic: 'Memory Basics', type: 'multi', text: 'Which operators are explicitly introduced in C++ for dynamic memory management?', options: [{id: 'o1', text: 'malloc'}, {id: 'o2', text: 'new'}, {id: 'o3', text: 'delete'}, {id: 'o4', text: 'free'}], correctAnswers: ['o2', 'o3'] },
+            { id: 'cpp-b-3', topic: 'C++', difficulty: 'Basic', subTopic: 'Syntax', type: 'fill', text: 'Which C++ standard object is used to output text to the console?', correctAnswers: ['std::cout', 'cout'] },
+            { id: 'cpp-b-4', topic: 'C++', difficulty: 'Basic', subTopic: 'References', type: 'single', text: 'Which symbol is used to pass a variable by reference in C++?', options: [{id: 'o1', text: '*'}, {id: 'o2', text: '&'}, {id: 'o3', text: '&&'}], correctAnswers: ['o2'] },
+            
+            // ================= C++ INTERMEDIATE =================
+            { id: 'cpp-i-1', topic: 'C++', difficulty: 'Intermediate', subTopic: 'Polymorphism', type: 'single', text: 'Which keyword tells the compiler to use dynamic (late) binding for a function?', options: [{id: 'o1', text: 'static'}, {id: 'o2', text: 'virtual'}, {id: 'o3', text: 'override'}], correctAnswers: ['o2'] },
+            { id: 'cpp-i-2', topic: 'C++', difficulty: 'Intermediate', subTopic: 'Smart Pointers', type: 'multi', text: 'Which of the following are standard C++ smart pointers introduced in C++11?', options: [{id: 'o1', text: 'std::auto_ptr'}, {id: 'o2', text: 'std::unique_ptr'}, {id: 'o3', text: 'std::shared_ptr'}], correctAnswers: ['o2', 'o3'] },
+            { id: 'cpp-i-3', topic: 'C++', difficulty: 'Intermediate', subTopic: 'Templates', type: 'fill', text: 'To declare a template class or function, you start with the keyword: _______ <typename T>', correctAnswers: ['template'] },
+            { id: 'cpp-i-4', topic: 'C++', difficulty: 'Intermediate', subTopic: 'Inheritance', type: 'single', text: 'What problem does virtual inheritance prominently solve?', options: [{id: 'o1', text: 'Memory leaks in base classes'}, {id: 'o2', text: 'The diamond problem (multiple inheritance ambiguities)'}, {id: 'o3', text: 'Private data access bypasses'}], correctAnswers: ['o2'] },
+        ];
+
+        /**
+         * State Management Architecture
+         */
+        let AppState = {
+            name: '',
+            topic: '',
+            diff: '',
+            globalTimeSeconds: 0,
+            timerInterval: null,
+            activeQuestions: [],
+            currentQuestionIndex: 0,
+            currentSelections: [], 
+            questionStartTimeSeconds: 0,
+            submissions: [], // { isCorrect, timeSpent, subTopic }
+            leaderboardData: JSON.parse(localStorage.getItem('devquiz_scores') || '[]')
+        };
+
+        // Seed initial dummy data for aesthetic purposes if empty
+        if (AppState.leaderboardData.length === 0) {
+            AppState.leaderboardData = [
+                { name: 'Linus_T', topic: 'C', difficulty: 'Basic', score: 100, time: 35 },
+                { name: 'Bjarne_S', topic: 'C++', difficulty: 'Intermediate', score: 100, time: 50 },
+                { name: 'Alice_Dev', topic: 'C++', difficulty: 'Basic', score: 80, time: 92 }
+            ];
+            localStorage.setItem('devquiz_scores', JSON.stringify(AppState.leaderboardData));
+        }
+
+        /**
+         * DOM Selectors
+         */
+        const UI = {
+            views: {
+                setup: document.getElementById('view-setup'),
+                quiz: document.getElementById('view-quiz'),
+                analytics: document.getElementById('view-analytics')
+            },
+            setup: {
+                targetBtns: document.querySelectorAll('.topic-btn'),
+                diffBtns: document.querySelectorAll('.diff-btn'),
+                inputName: document.getElementById('input-name'),
+                startBtn: document.getElementById('btn-start'),
+                errorBox: document.getElementById('setup-error')
+            },
+            quiz: {
+                currIdx: document.getElementById('quiz-curr-idx'),
+                totIdx: document.getElementById('quiz-total-idx'),
+                timer: document.getElementById('quiz-timer'),
+                progress: document.getElementById('quiz-progress'),
+                subtopic: document.getElementById('quiz-subtopic'),
+                typeText: document.getElementById('quiz-type'),
+                text: document.getElementById('quiz-text'),
+                codeContainer: document.getElementById('quiz-code-container'),
+                codeNode: document.getElementById('quiz-code'),
+                optionsContainer: document.getElementById('quiz-options'),
+                nextBtn: document.getElementById('btn-next')
+            }
+        };
+
+        /**
+         * Application Boot & Setup Bindings
+         */
+        function initializeApp() {
+            renderLeaderboard();
+
+            // Bind Selection Buttons
+            UI.setup.targetBtns.forEach(b => b.addEventListener('click', e => {
+                UI.setup.targetBtns.forEach(btn => btn.className = 'topic-btn p-4 rounded-xl border bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 transition-all font-semibold');
+                e.target.className = 'topic-btn p-4 rounded-xl border bg-teal-500/10 border-teal-500 text-teal-400 transition-all font-semibold';
+                AppState.topic = e.target.dataset.topic;
+            }));
+
+            UI.setup.diffBtns.forEach(b => b.addEventListener('click', e => {
+                UI.setup.diffBtns.forEach(btn => btn.className = 'diff-btn p-4 rounded-xl border bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-600 transition-all font-semibold');
+                e.target.className = 'diff-btn p-4 rounded-xl border bg-blue-500/10 border-blue-500 text-blue-400 transition-all font-semibold';
+                AppState.diff = e.target.dataset.diff;
+            }));
+
+            UI.setup.startBtn.addEventListener('click', handleQuizStart);
+            document.getElementById('btn-restart').addEventListener('click', () => location.reload());
+            UI.quiz.nextBtn.addEventListener('click', submitAnswer);
+        }
+
+        function handleQuizStart() {
+            AppState.name = UI.setup.inputName.value.trim();
+            if (!AppState.name) return displaySetupError('Missing System Variable: Candidate Name');
+            if (!AppState.topic) return displaySetupError('Missing System Variable: Target Language');
+            if (!AppState.diff) return displaySetupError('Missing System Variable: Difficulty Level');
+            
+            // Filter and Randomize
+            let pool = QuestionBank.filter(q => q.topic === AppState.topic && q.difficulty === AppState.diff);
+            if(pool.length === 0) pool = QuestionBank.slice(0, 5); // Fallback safeguard
+            
+            AppState.activeQuestions = pool.sort(() => Math.random() - 0.5); // Shuffle Array
+            
+            // Transition Engine state
+            switchView('quiz');
+            startGlobalClock();
+            renderActiveQuestion();
+        }
+
+        function displaySetupError(msg) {
+            UI.setup.errorBox.innerText = msg;
+            UI.setup.errorBox.classList.remove('hidden');
+        }
+
+        function switchView(target) {
+            Object.values(UI.views).forEach(v => v.classList.add('hidden'));
+            UI.views[target].classList.remove('hidden');
+        }
+
+        /**
+         * Quiz Engine Timing & Iteration
+         */
+        function startGlobalClock() {
+            AppState.globalTimeSeconds = 0;
+            AppState.timerInterval = setInterval(() => {
+                AppState.globalTimeSeconds++;
+                const m = String(Math.floor(AppState.globalTimeSeconds / 60)).padStart(2, '0');
+                const s = String(AppState.globalTimeSeconds % 60).padStart(2, '0');
+                UI.quiz.timer.innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function renderActiveQuestion() {
+            AppState.currentSelections = [];
+            UI.quiz.nextBtn.disabled = true;
+            UI.quiz.nextBtn.innerHTML = (AppState.currentQuestionIndex === AppState.activeQuestions.length - 1) 
+                ? '<span>Compile Evaluation</span>' 
+                : '<span>Next Question</span>';
+            
+            const q = AppState.activeQuestions[AppState.currentQuestionIndex];
+            
+            // Interface Updates
+            UI.quiz.currIdx.innerText = AppState.currentQuestionIndex + 1;
+            UI.quiz.totIdx.innerText = AppState.activeQuestions.length;
+            UI.quiz.progress.style.width = `${(AppState.currentQuestionIndex / AppState.activeQuestions.length) * 100}%`;
+            UI.quiz.subtopic.innerText = q.subTopic;
+            
+            const typeLabels = { 'single': 'Single Select', 'multi': 'Multi-Select (Choose All Correct)', 'fill': 'Exact Match Parsing' };
+            UI.quiz.typeText.innerText = typeLabels[q.type];
+            UI.quiz.text.innerText = q.text;
+
+            if (q.codeSnippet) {
+                UI.quiz.codeContainer.classList.remove('hidden');
+                UI.quiz.codeNode.innerText = q.codeSnippet;
+            } else {
+                UI.quiz.codeContainer.classList.add('hidden');
+            }
+
+            // Build Input Nodes
+            UI.quiz.optionsContainer.innerHTML = '';
+            if (q.type === 'fill') {
+                const searchInput = document.createElement('input');
+                searchInput.type = 'text';
+                searchInput.className = "w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono shadow-inner";
+                searchInput.placeholder = "Enter exact code, operator, or text string...";
+                searchInput.addEventListener('input', (e) => {
+                    AppState.currentSelections = [e.target.value];
+                    UI.quiz.nextBtn.disabled = e.target.value.trim().length === 0;
+                });
+                UI.quiz.optionsContainer.appendChild(searchInput);
+                setTimeout(() => searchInput.focus(), 100);
+            } else {
+                q.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'w-full text-left py-4 px-6 rounded-xl border flex items-center gap-4 transition-all bg-gray-950 hover:bg-gray-800 border-gray-800 text-gray-300';
+                    btn.innerHTML = `<div class="flex-shrink-0 text-gray-500"><div class="w-5 h-5 border-2 border-gray-600 rounded${q.type==='multi'?'':'-full'} check-icon transition-colors"></div></div><span class="font-mono text-sm">${opt.text}</span>`;
+                    
+                    btn.addEventListener('click', () => {
+                        if (q.type === 'single') {
+                            AppState.currentSelections = [opt.id];
+                            // Reset Siblings
+                            Array.from(UI.quiz.optionsContainer.children).forEach(c => {
+                                c.classList.remove('bg-teal-500/10', 'border-teal-500', 'text-white');
+                                c.classList.add('bg-gray-950', 'border-gray-800', 'text-gray-300');
+                                c.querySelector('.check-icon').classList.remove('border-teal-400', 'bg-teal-400');
+                                c.querySelector('.check-icon').classList.add('border-gray-600');
+                            });
+                            // Set Active
+                            btn.classList.add('bg-teal-500/10', 'border-teal-500', 'text-white');
+                            btn.querySelector('.check-icon').classList.add('border-teal-400', 'bg-teal-400');
+                        } else { // Multi
+                            if(AppState.currentSelections.includes(opt.id)) {
+                                AppState.currentSelections = AppState.currentSelections.filter(id => id !== opt.id);
+                                btn.classList.remove('bg-teal-500/10', 'border-teal-500', 'text-white');
+                                btn.querySelector('.check-icon').classList.remove('border-teal-400', 'bg-teal-400');
+                            } else {
+                                AppState.currentSelections.push(opt.id);
+                                btn.classList.add('bg-teal-500/10', 'border-teal-500', 'text-white');
+                                btn.classList.remove('bg-gray-950', 'border-gray-800', 'text-gray-300');
+                                btn.querySelector('.check-icon').classList.add('border-teal-400', 'bg-teal-400');
+                            }
+                        }
+                        UI.quiz.nextBtn.disabled = AppState.currentSelections.length === 0;
+                    });
+                    UI.quiz.optionsContainer.appendChild(btn);
+                });
+            }
+            AppState.questionStartTimeSeconds = AppState.globalTimeSeconds;
+        }
+
+        function submitAnswer() {
+            const q = AppState.activeQuestions[AppState.currentQuestionIndex];
+            const timeSpent = AppState.globalTimeSeconds - AppState.questionStartTimeSeconds;
+            
+            // Evaluation Algorithm
+            let isCorrect = false;
+            if (q.type === 'fill') {
+                const acceptableAnswers = q.correctAnswers.map(a => a.toLowerCase().replace(/\s+/g, ''));
+                const rawSubmission = AppState.currentSelections[0] || '';
+                const formatSubmission = rawSubmission.toLowerCase().replace(/\s+/g, '');
+                isCorrect = acceptableAnswers.includes(formatSubmission);
+            } else if (q.type === 'single') {
+                isCorrect = AppState.currentSelections[0] === q.correctAnswers[0];
+            } else {
+                // Multi requires precise set match
+                const sortedSubmission = [...AppState.currentSelections].sort();
+                const sortedKey = [...q.correctAnswers].sort();
+                isCorrect = JSON.stringify(sortedSubmission) === JSON.stringify(sortedKey);
+            }
+
+            AppState.submissions.push({ isCorrect, timeSpent, subTopic: q.subTopic });
+
+            if (AppState.currentQuestionIndex < AppState.activeQuestions.length - 1) {
+                AppState.currentQuestionIndex++;
+                renderActiveQuestion();
+            } else {
+                terminateEvaluation();
+            }
+        }
+
+        /**
+         * Analytics Compilation & Charts
+         */
+        function terminateEvaluation() {
+            clearInterval(AppState.timerInterval);
+            switchView('analytics');
+
+            const corrects = AppState.submissions.filter(r => r.isCorrect).length;
+            const scorePercentage = Math.round((corrects / AppState.activeQuestions.length) * 100);
+
+            // Persist to Dashboard
+            AppState.leaderboardData.push({
+                name: AppState.name,
+                topic: AppState.topic,
+                difficulty: AppState.diff,
+                score: scorePercentage,
+                time: AppState.globalTimeSeconds
+            });
+            AppState.leaderboardData.sort((a,b) => b.score - a.score || a.time - b.time);
+            localStorage.setItem('devquiz_scores', JSON.stringify(AppState.leaderboardData));
+
+            // Sync Header Metrics
+            document.getElementById('stat-score').innerText = `${scorePercentage}%`;
+            document.getElementById('stat-correct').innerText = corrects;
+            const m = String(Math.floor(AppState.globalTimeSeconds / 60)).padStart(2, '0');
+            const s = String(AppState.globalTimeSeconds % 60).padStart(2, '0');
+            document.getElementById('stat-time').innerText = `${m}:${s}`;
+
+            generatePerformanceVisualizations();
+        }
+
+        function generatePerformanceVisualizations() {
+            // Aggregate SubTopic Data
+            const analyticsMatrix = {};
+            AppState.submissions.forEach(sub => {
+                if(!analyticsMatrix[sub.subTopic]) analyticsMatrix[sub.subTopic] = { total: 0, time: 0, correct: 0 };
+                analyticsMatrix[sub.subTopic].total++;
+                analyticsMatrix[sub.subTopic].time += sub.timeSpent;
+                if(sub.isCorrect) analyticsMatrix[sub.subTopic].correct++;
+            });
+
+            const keys = Object.keys(analyticsMatrix);
+            // Derive mapping Arrays
+            const accuracyArray = keys.map(k => (analyticsMatrix[k].correct / analyticsMatrix[k].total) * 100);
+            const timeArray = keys.map(k => analyticsMatrix[k].time);
+
+            // Chart Configuration Params
+            Chart.defaults.color = '#9CA3AF';
+            Chart.defaults.font.family = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas';
+
+            new Chart(document.getElementById('radarChart'), {
+                type: 'radar',
+                data: {
+                    labels: keys,
+                    datasets: [{
+                        label: 'Accuracy %',
+                        data: accuracyArray,
+                        backgroundColor: 'rgba(45, 212, 191, 0.2)',
+                        borderColor: 'rgba(45, 212, 191, 1)',
+                        pointBackgroundColor: '#2DD4BF'
+                    }]
+                },
+                options: { 
+                    scales: { 
+                        r: { 
+                            suggestedMin: 0, suggestedMax: 100, 
+                            grid: { color: '#374151' }, 
+                            angleLines: { color: '#374151' }, 
+                            pointLabels: { color: '#D1D5DB' } 
+                        } 
+                    }, 
+                    plugins: { legend: { display: false } } 
+                }
+            });
+
+            new Chart(document.getElementById('barChart'), {
+                type: 'bar',
+                data: {
+                    labels: keys,
+                    datasets: [{
+                        label: 'Calculation Time (s)',
+                        data: timeArray,
+                        backgroundColor: '#3B82F6',
+                        borderRadius: 6
+                    }]
+                },
+                options: { 
+                    scales: { 
+                        x: { grid: { display: false } }, 
+                        y: { grid: { color: '#374151' } } 
+                    }, 
+                    plugins: { legend: { display: false } } 
+                }
+            });
+        }
+
+        function renderLeaderboard() {
+            const lbHTML = AppState.leaderboardData.slice(0, 10).map((entry, i) => `
+                <div class="flex items-center justify-between p-3 rounded-lg bg-gray-950 border border-gray-800/50 hover:border-gray-700 transition">
+                    <div class="flex items-center gap-4">
+                        <span class="w-6 text-center font-bold text-gray-500">#${i + 1}</span>
+                        <div>
+                            <div class="font-medium text-gray-200">${entry.name}</div>
+                            <div class="text-xs text-gray-500 uppercase tracking-widest">${entry.topic} | ${entry.difficulty}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-yellow-500 font-mono text-sm">${entry.score}%</div>
+                        <div class="text-blue-400 font-mono text-xs w-10 text-right">${entry.time}s</div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('leaderboard-list').innerHTML = lbHTML;
+        }
+
+        // Engage boot sequence
+        window.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
